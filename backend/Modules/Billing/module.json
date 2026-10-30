@@ -1,0 +1,11 @@
+{
+  "name": "Billing",
+  "alias": "billing",
+  "description": "Charge invoice issuance, multi-formula calculation engine, penalties, and other revenues",
+  "keywords": [],
+  "priority": 3,
+  "providers": [],
+  "aliases": {},
+  "files": [],
+  "requires": ["Building", "Unit", "Accounting"]
+}

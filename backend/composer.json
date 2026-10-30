@@ -1,0 +1,41 @@
+{
+  "name": "aparteman/backend-api",
+  "type": "project",
+  "description": "Aparteman - Smart Building Management Modular Monolith RESTful API",
+  "keywords": ["laravel", "aparteman", "building-management", "modular-monolith", "laratrust"],
+  "license": "MIT",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^11.0",
+    "laravel/sanctum": "^4.0",
+    "laravel/tinker": "^2.9",
+    "nwidart/laravel-modules": "^11.0",
+    "santigarcor/laratrust": "^8.0",
+    "maatwebsite/excel": "^3.1"
+  },
+  "require-dev": {
+    "fakerphp/faker": "^1.23",
+    "mockery/mockery": "^1.6",
+    "nunomaduro/collision": "^8.1",
+    "phpunit/phpunit": "^11.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/",
+      "Modules\\": "Modules/"
+    }
+  },
+  "scripts": {
+    "post-autoload-dump": [
+      "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+      "@php artisan package:discover --ansi"
+    ]
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

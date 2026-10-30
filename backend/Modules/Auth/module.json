@@ -1,0 +1,11 @@
+{
+  "name": "Auth",
+  "alias": "auth",
+  "description": "Authentication module: OTP, Password, Multi-role selection",
+  "keywords": [],
+  "priority": 0,
+  "providers": [],
+  "aliases": {},
+  "files": [],
+  "requires": []
+}

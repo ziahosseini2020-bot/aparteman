@@ -1,0 +1,11 @@
+{
+  "name": "Unit",
+  "alias": "unit",
+  "description": "Apartment units, resident/owner assignment, and Excel import module",
+  "keywords": [],
+  "priority": 2,
+  "providers": [],
+  "aliases": {},
+  "files": [],
+  "requires": ["Auth", "Building"]
+}

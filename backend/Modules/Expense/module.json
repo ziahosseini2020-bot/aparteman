@@ -1,0 +1,11 @@
+{
+  "name": "Expense",
+  "alias": "expense",
+  "description": "Building expenses, meter reading calculation, attachments, and fund settlement methods",
+  "keywords": [],
+  "priority": 4,
+  "providers": [],
+  "aliases": {},
+  "files": [],
+  "requires": ["Building", "Unit", "Accounting"]
+}

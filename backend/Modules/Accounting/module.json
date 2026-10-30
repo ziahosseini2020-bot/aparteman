@@ -1,0 +1,11 @@
+{
+  "name": "Accounting",
+  "alias": "accounting",
+  "description": "Building reserve fund, petty cash, and financial audit transaction history",
+  "keywords": [],
+  "priority": 5,
+  "providers": [],
+  "aliases": {},
+  "files": [],
+  "requires": ["Building"]
+}

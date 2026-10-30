@@ -1,0 +1,11 @@
+{
+  "name": "Building",
+  "alias": "building",
+  "description": "Building and Block management module",
+  "keywords": [],
+  "priority": 1,
+  "providers": [],
+  "aliases": {},
+  "files": [],
+  "requires": ["Auth"]
+}
