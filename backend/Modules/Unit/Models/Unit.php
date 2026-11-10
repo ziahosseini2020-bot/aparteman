@@ -24,12 +24,14 @@ class Unit extends Model
         'storage_count',
         'is_occupied',
         'default_charge_amount',
+        'opening_balance',
     ];
 
     protected $casts = [
         'area' => 'decimal:2',
         'is_occupied' => 'boolean',
         'default_charge_amount' => 'decimal:2',
+        'opening_balance' => 'decimal:2',
     ];
 
     public function building()
@@ -71,5 +73,10 @@ class Unit extends Model
     public function meterReadings()
     {
         return $this->hasMany(MeterReading::class);
+    }
+
+    public function ledgerEntries()
+    {
+        return $this->hasMany(\Modules\Accounting\Models\UnitLedgerEntry::class);
     }
 }

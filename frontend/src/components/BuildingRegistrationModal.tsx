@@ -29,8 +29,8 @@ export const BuildingRegistrationModal: React.FC = () => {
   // مرحله ۲: بلوک‌بندی
   const [hasBlocks, setHasBlocks] = useState(true);
   const [blocks, setBlocks] = useState<Block[]>([
-    { id: "blk-1", name: "بلوک شرقی (A)", floors: 6, unitsCount: 12 },
-    { id: "blk-2", name: "بلوک غربی (B)", floors: 6, unitsCount: 12 }
+    { id: "blk-1", buildingId: "bld-new", name: "بلوک شرقی (A)", floorsCount: 6, unitsCount: 12, status: "active" },
+    { id: "blk-2", buildingId: "bld-new", name: "بلوک غربی (B)", floorsCount: 6, unitsCount: 12, status: "active" }
   ]);
 
   if (!isNewBuildingModalOpen) return null;
@@ -39,7 +39,7 @@ export const BuildingRegistrationModal: React.FC = () => {
     const newId = "blk-" + (blocks.length + 1);
     setBlocks([
       ...blocks,
-      { id: newId, name: `بلوک ${String.fromCharCode(65 + blocks.length)}`, floors: 4, unitsCount: 8 }
+      { id: newId, buildingId: "bld-new", name: `بلوک ${String.fromCharCode(65 + blocks.length)}`, floorsCount: 4, unitsCount: 8, status: "active" }
     ]);
   };
 
@@ -53,13 +53,14 @@ export const BuildingRegistrationModal: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const [lat, lng] = location.split(",").map(s => Number(s.trim()));
     createBuilding({
       name,
       type,
       province,
       city,
       address,
-      location,
+      location: !isNaN(lat) && !isNaN(lng) ? { lat, lng } : { lat: 35.7925, lng: 51.3782 },
       phone,
       postalCode,
       accountNumber,
@@ -67,9 +68,10 @@ export const BuildingRegistrationModal: React.FC = () => {
       managerName,
       managerMobile,
       password,
-      blocks: hasBlocks ? blocks : [{ id: "blk-main", name: "بلوک اصلی", floors: 4, unitsCount: 10 }]
+      blocks: hasBlocks ? blocks : [{ id: "blk-main", buildingId: "bld-new", name: "بلوک اصلی", floorsCount: 4, unitsCount: 10, status: "active" }]
     });
     setStep(1);
+    setIsNewBuildingModalOpen(false);
   };
 
   return (
@@ -344,8 +346,8 @@ export const BuildingRegistrationModal: React.FC = () => {
                             <span className="text-[11px] text-slate-500 shrink-0">طبقات:</span>
                             <input
                               type="number"
-                              value={block.floors}
-                              onChange={(e) => handleUpdateBlock(block.id, "floors", Number(e.target.value))}
+                              value={block.floorsCount}
+                              onChange={(e) => handleUpdateBlock(block.id, "floorsCount", Number(e.target.value))}
                               className="w-full py-1 text-xs text-center focus:outline-none"
                             />
                           </div>

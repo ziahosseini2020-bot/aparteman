@@ -36,16 +36,23 @@ class ChargeCalculationService
     }
 
     /**
-     * Calculate overdue daily penalty
+     * Calculate overdue daily penalty (fixed amount per day or daily percentage)
      */
-    public function calculateLatePenalty(string $dueDate, float $dailyPenaltyAmount): float
-    {
+    public function calculateLatePenalty(
+        string $dueDate,
+        float $dailyPenaltyRate,
+        float $principalAmount = 0,
+        string $penaltyType = 'fixed'
+    ): float {
         $due = \Carbon\Carbon::parse($dueDate);
         $today = now();
 
         if ($today->gt($due)) {
             $daysPast = $today->diffInDays($due);
-            return $daysPast * $dailyPenaltyAmount;
+            if ($penaltyType === 'percentage') {
+                return round($daysPast * ($principalAmount * ($dailyPenaltyRate / 100)), 2);
+            }
+            return round($daysPast * $dailyPenaltyRate, 2);
         }
 
         return 0;

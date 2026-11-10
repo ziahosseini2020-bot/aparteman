@@ -14,6 +14,7 @@ class UnitAssignment extends Model
         'unit_id',
         'user_id',
         'type', // 'owner' or 'tenant'
+        'ownership_percentage',
         'is_resident', // if owner lives in the unit
         'start_date',
         'end_date',
@@ -21,6 +22,7 @@ class UnitAssignment extends Model
     ];
 
     protected $casts = [
+        'ownership_percentage' => 'decimal:2',
         'is_resident' => 'boolean',
         'is_active' => 'boolean',
         'start_date' => 'date',

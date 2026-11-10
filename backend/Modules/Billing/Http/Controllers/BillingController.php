@@ -7,7 +7,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounting\Models\BuildingFund;
+use Modules\Accounting\Models\FinancialAccount;
 use Modules\Accounting\Models\FundTransaction;
+use Modules\Accounting\Models\Transaction;
+use Modules\Accounting\Models\UnitLedgerEntry;
 use Modules\Billing\Models\ChargeInvoice;
 use Modules\Billing\Models\ChargeInvoiceItem;
 use Modules\Billing\Services\ChargeCalculationService;
@@ -150,7 +153,7 @@ class BillingController extends Controller
                     $payerUserId = $unit->currentResident->user_id;
                 }
 
-                ChargeInvoiceItem::create([
+                $chargeItem = ChargeInvoiceItem::create([
                     'charge_invoice_id' => $invoice->id,
                     'unit_id' => $unit->id,
                     'payer_user_id' => $payerUserId,
@@ -158,6 +161,22 @@ class BillingController extends Controller
                     'penalty_amount' => 0,
                     'total_amount' => $amount,
                     'status' => 'unpaid',
+                ]);
+
+                // Record debit in Unit Ledger (Saraban double-entry invariant)
+                $latest = UnitLedgerEntry::where('unit_id', $unit->id)->latest('id')->first();
+                $curBal = $latest ? (float) $latest->balance : 0;
+                $newBal = $curBal - $amount;
+
+                UnitLedgerEntry::create([
+                    'unit_id' => $unit->id,
+                    'transaction_id' => null,
+                    'type' => 'debit',
+                    'amount' => $amount,
+                    'balance' => $newBal,
+                    'category' => 'charge',
+                    'description' => "صدور شارژ {$invoice->title}",
+                    'entry_date' => now(),
                 ]);
             }
 
@@ -200,19 +219,41 @@ class BillingController extends Controller
                 'payment_method' => $request->payment_method ?: 'آنلاین / شتاب',
             ]);
 
-            // Deposit into Building Fund
-            $fund = BuildingFund::firstOrCreate(['building_id' => $item->invoice->building_id]);
-            $fund->increment('current_balance', $finalPayable);
+            // Deposit into Financial Account (Liquid Cash) & Record Transaction
+            $account = FinancialAccount::where('building_id', $item->invoice->building_id)->where('is_active', true)->first();
+            if ($account) {
+                $account->increment('balance', $finalPayable);
 
-            FundTransaction::create([
-                'building_id' => $item->invoice->building_id,
-                'type' => 'deposit',
-                'amount' => $finalPayable,
-                'source' => 'charge_payment',
-                'reference_id' => $item->id,
-                'description' => "تسویه شارژ {$item->invoice->title} برای واحد {$item->unit_id}",
-                'balance_after' => $fund->current_balance,
-            ]);
+                $tx = Transaction::create([
+                    'building_id' => $item->invoice->building_id,
+                    'account_id' => $account->id,
+                    'unit_id' => $item->unit_id,
+                    'type' => 'charge_payment',
+                    'amount' => $finalPayable,
+                    'category' => 'charge',
+                    'payment_method' => 'online_gateway',
+                    'status' => 'completed',
+                    'reference_number' => 'CHG-' . $item->id . '-' . time(),
+                    'description' => "تسویه آنلاین شارژ {$item->invoice->title} برای واحد {$item->unit_id}",
+                    'transaction_date' => now(),
+                ]);
+
+                // Credit Unit Ledger
+                $latest = UnitLedgerEntry::where('unit_id', $item->unit_id)->latest('id')->first();
+                $curBal = $latest ? (float) $latest->balance : 0;
+                $newBal = $curBal + $finalPayable;
+
+                UnitLedgerEntry::create([
+                    'unit_id' => $item->unit_id,
+                    'transaction_id' => $tx->id,
+                    'type' => 'credit',
+                    'amount' => $finalPayable,
+                    'balance' => $newBal,
+                    'category' => 'payment',
+                    'description' => "واریز شارژ {$item->invoice->title}",
+                    'entry_date' => now(),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

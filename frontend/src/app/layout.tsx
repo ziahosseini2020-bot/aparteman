@@ -3,8 +3,8 @@ import "./globals.css";
 import { AppProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
-  title: "سامانه مدیریت ساختمان و آپارتمان",
-  description: "سامانه جامع مدیریت ساختمان، شارژ، کنتورخوانی و امور مالی آپارتمان‌ها",
+  title: "سَـرابـان | سامانه جامع مدیریت هوشمند ساختمان و مجتمع‌ها (saraband.ir)",
+  description: "سامانه مدیریت شارژ، تسهیم هزینه‌ها، کنتورخوانی، حسابداری دوبل و اتصال به پیام‌رسان بله",
 };
 
 export default function RootLayout({

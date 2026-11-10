@@ -1,389 +1,572 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import {
   Building,
   Block,
   Unit,
   User,
-  UserRoleAssignment,
-  ChargeInvoice,
-  ExpenseItem,
-  OtherRevenue,
+  RoleAssignment,
+  RoleType,
+  FinancialAccount,
+  Transaction,
+  UnitLedgerEntry,
+  Charge,
+  ChargeItem,
+  Expense,
+  Income,
   initialBuildings,
+  initialFinancialAccounts,
   initialUnits,
-  initialRoles,
-  initialInvoices,
+  initialCharges,
   initialExpenses,
-  initialOtherRevenues
+  initialIncomes,
+  initialTransactions,
+  initialLedgerEntries,
+  initialRoleAssignments,
 } from "./mockData";
 
 interface AppContextType {
   // Authentication & Roles
   isLoggedIn: boolean;
   currentUser: User | null;
-  userRoles: UserRoleAssignment[];
-  currentRole: UserRoleAssignment | null;
+  userRoles: RoleAssignment[];
+  currentRole: RoleAssignment;
   isLoginModalOpen: boolean;
-  isNewBuildingModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
+  isNewBuildingModalOpen: boolean;
   setIsNewBuildingModalOpen: (open: boolean) => void;
+  switchRole: (role: RoleAssignment) => void;
   loginWithOtp: (mobile: string, code: string) => boolean;
   loginWithPassword: (mobile: string, pass: string) => boolean;
-  switchRole: (role: UserRoleAssignment) => void;
   logout: () => void;
-  
-  // Buildings
+
+  // Buildings & Blocks
   buildings: Building[];
   activeBuilding: Building;
-  setActiveBuilding: (building: Building) => void;
-  createBuilding: (data: Partial<Building> & { password?: string; managerName?: string; managerMobile?: string }) => void;
+  setActiveBuilding: (bld: Building) => void;
+  createBuilding: (data: Partial<Building>) => void;
+  createBlock: (name: string, floorsCount: number, unitsCount: number, managerName?: string) => void;
 
-  // Units
+  // Units & Ownership
   units: Unit[];
-  addUnit: (unit: Omit<Unit, "id" | "buildingId" | "balance">) => void;
-  importUnitsFromExcel: (newUnits: Omit<Unit, "id" | "buildingId" | "balance">[]) => void;
+  addUnit: (unit: Partial<Unit> & { ownerName?: string; ownerMobile?: string; residentName?: string; residentMobile?: string; isOwnerResident?: boolean }) => void;
+  importUnitsExcel: (items: any[]) => void;
 
-  // Invoices & Billing
-  invoices: ChargeInvoice[];
-  createChargeInvoice: (invoice: Omit<ChargeInvoice, "id" | "buildingId" | "items" | "totalAmount"> & { customAmounts?: Record<string, number> }) => void;
-  payInvoiceItem: (invoiceId: string, unitId: string) => void;
+  // Charges
+  charges: Charge[];
+  createCharge: (chargeData: Omit<Charge, "id" | "buildingId" | "totalAmount" | "totalCollected" | "items">) => void;
 
-  // Expenses
-  expenses: ExpenseItem[];
-  addExpense: (expense: Omit<ExpenseItem, "id" | "buildingId">) => void;
+  // Expenses & 3 Scenarios
+  expenses: Expense[];
+  createExpense: (expenseData: Omit<Expense, "id" | "buildingId" | "items" | "meterReadings"> & { meterReadings?: any[] }) => void;
+  payExpenseFromFund: (expenseId: string, accountId: string) => void;
 
-  // Other Revenues
-  otherRevenues: OtherRevenue[];
-  addOtherRevenue: (revenue: Omit<OtherRevenue, "id" | "buildingId">) => void;
+  // Incomes
+  incomes: Income[];
+  addIncome: (incomeData: Omit<Income, "id" | "buildingId">) => void;
 
-  // Active Manager Tab
+  // Financial Accounts & Transactions
+  accounts: FinancialAccount[];
+  transactions: Transaction[];
+  addTransaction: (txData: Omit<Transaction, "id" | "buildingId">) => void;
+  approvePendingTransaction: (txId: string) => void;
+
+  // Unit Ledger
+  ledgerEntries: UnitLedgerEntry[];
+
+  // Navigation
   activeTab: string;
   setActiveTab: (tab: string) => void;
+
+  // Bale Notification Simulation
+  baleNotifications: { id: string; time: string; text: string; recipient: string }[];
+  sendBaleNotification: (recipient: string, text: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>({
-    id: "usr-admin",
-    name: "امیرحسین رضایی",
-    mobile: "09121112233"
+    id: "usr-manager",
+    name: "مهندس علیرضا سلیمانی",
+    mobile: "09121112233",
+    baleUsername: "@soleimani_manager"
   });
 
   const [buildings, setBuildings] = useState<Building[]>(initialBuildings);
   const [activeBuilding, setActiveBuilding] = useState<Building>(initialBuildings[0]);
   const [units, setUnits] = useState<Unit[]>(initialUnits);
-  const [invoices, setInvoices] = useState<ChargeInvoice[]>(initialInvoices);
-  const [expenses, setExpenses] = useState<ExpenseItem[]>(initialExpenses);
-  const [otherRevenues, setOtherRevenues] = useState<OtherRevenue[]>(initialOtherRevenues);
+  const [accounts, setAccounts] = useState<FinancialAccount[]>(initialFinancialAccounts);
+  const [charges, setCharges] = useState<Charge[]>(initialCharges);
+  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [incomes, setIncomes] = useState<Income[]>(initialIncomes);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [ledgerEntries, setLedgerEntries] = useState<UnitLedgerEntry[]>(initialLedgerEntries);
 
-  const [userRoles, setUserRoles] = useState<UserRoleAssignment[]>(initialRoles);
-  const [currentRole, setCurrentRole] = useState<UserRoleAssignment | null>(initialRoles[0]);
+  const [userRoles, setUserRoles] = useState<RoleAssignment[]>(initialRoleAssignments);
+  const [currentRole, setCurrentRole] = useState<RoleAssignment>(initialRoleAssignments[0]);
 
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
-  const [isNewBuildingModalOpen, setIsNewBuildingModalOpen] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isNewBuildingModalOpen, setIsNewBuildingModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
-  // Login with OTP
-  const loginWithOtp = (mobile: string, code: string) => {
-    // شبیه‌سازی تایید پیامک
-    if (code === "1234" || code.length === 4 || code.length === 5) {
-      handleSuccessfulLogin(mobile);
-      return true;
-    }
-    return false;
-  };
+  const [baleNotifications, setBaleNotifications] = useState([
+    { id: "bn-1", time: "۱۴۰۵/۰۸/۰۱ ۱۱:۳۰", text: "قبض شارژ آبان‌ماه با موفقیت در ربات بله برای ساکنین ارسال شد.", recipient: "اهالی ساختمان" },
+    { id: "bn-2", time: "۱۴۰۵/۰۸/۰۳ ۱۸:۴۵", text: "تایید پرداخت شارژ واحد ۱۰۲ از طریق درگاه بله انجام شد.", recipient: "محمد حسینی" },
+  ]);
 
-  // Login with Password
-  const loginWithPassword = (mobile: string, pass: string) => {
-    if (pass.length >= 4) {
-      handleSuccessfulLogin(mobile);
-      return true;
-    }
-    return false;
-  };
-
-  const handleSuccessfulLogin = (mobile: string) => {
-    setIsLoggedIn(true);
-    setIsLoginModalOpen(false);
-
-    // پیدا کردن یا ساخت کاربر
-    let user = {
-      id: "usr-" + mobile.slice(-4),
-      name: mobile === "09121112233" ? "امیرحسین رضایی" : "کاربر " + mobile.slice(-4),
-      mobile
+  const sendBaleNotification = (recipient: string, text: string) => {
+    const newNotif = {
+      id: "bn-" + Date.now(),
+      time: "لحظاتی پیش",
+      text,
+      recipient
     };
-    setCurrentUser(user);
-
-    // بررسی اینکه آیا کاربر نقش دارد یا خیر
-    const matchedRoles = userRoles.filter(r => r.userId === user.id || mobile === "09121112233");
-    if (matchedRoles.length > 0) {
-      setUserRoles(matchedRoles);
-      setCurrentRole(matchedRoles[0]);
-    } else {
-      // هیچ نقشی ندارد
-      setUserRoles([]);
-      setCurrentRole(null);
-    }
+    setBaleNotifications(prev => [newNotif, ...prev]);
   };
 
-  const switchRole = (role: UserRoleAssignment) => {
-    setCurrentRole(role);
-    const targetBuilding = buildings.find(b => b.id === role.buildingId);
-    if (targetBuilding) {
-      setActiveBuilding(targetBuilding);
+  const loginWithOtp = (mobile: string, code: string) => {
+    if (code === "1234" || code.length >= 4) {
+      setIsLoggedIn(true);
+      setIsLoginModalOpen(false);
+      return true;
     }
+    return false;
+  };
+
+  const loginWithPassword = (mobile: string, pass: string) => {
+    if (mobile && pass && pass.length >= 4) {
+      setIsLoggedIn(true);
+      setIsLoginModalOpen(false);
+      return true;
+    }
+    return false;
   };
 
   const logout = () => {
     setIsLoggedIn(false);
-    setCurrentUser(null);
-    setCurrentRole(null);
   };
 
-  // Create Building & become manager
-  const createBuilding = (data: Partial<Building> & { password?: string; managerName?: string; managerMobile?: string }) => {
-    const newBuildingId = "bld-" + (buildings.length + 1);
-    const newBuilding: Building = {
-      id: newBuildingId,
-      name: data.name || "ساختمان جدید",
-      province: data.province || "تهران",
-      city: data.city || "تهران",
-      address: data.address || "",
-      phone: data.phone || "",
-      postalCode: data.postalCode || "",
-      type: data.type || "مسکونی",
-      accountNumber: data.accountNumber || "",
-      accountHolder: data.accountHolder || data.managerName || "",
-      fundBalance: 0,
-      blocks: data.blocks || [{ id: "blk-1", name: "بلوک اصلی", floors: 4, unitsCount: 8 }]
+  const switchRole = (role: RoleAssignment) => {
+    setCurrentRole(role);
+    const targetBuilding = buildings.find(b => b.id === role.buildingId);
+    if (targetBuilding) setActiveBuilding(targetBuilding);
+  };
+
+  // Add Block
+  const createBlock = (name: string, floorsCount: number, unitsCount: number, managerName?: string) => {
+    const newBlock: Block = {
+      id: "blk-" + (activeBuilding.blocks.length + 1),
+      buildingId: activeBuilding.id,
+      name,
+      floorsCount,
+      unitsCount,
+      status: "active",
+      managerName: managerName || "مشخص نشده"
     };
 
-    setBuildings(prev => [...prev, newBuilding]);
-    setActiveBuilding(newBuilding);
+    setBuildings(prev =>
+      prev.map(b => b.id === activeBuilding.id ? { ...b, blocks: [...b.blocks, newBlock], hasBlocks: true } : b)
+    );
+    setActiveBuilding(prev => ({ ...prev, blocks: [...prev.blocks, newBlock], hasBlocks: true }));
+  };
 
-    // ارتقای کاربر به نقش مدیر ساختمان جدید
-    const newRole: UserRoleAssignment = {
+  // Create Building
+  const createBuilding = (data: Partial<Building>) => {
+    const newBld: Building = {
+      id: "bld-" + (buildings.length + 1),
+      name: data.name || "ساختمان جدید",
+      type: data.type || "مسکونی",
+      address: data.address || "",
+      postalCode: data.postalCode || "",
+      floorsCount: data.floorsCount || 4,
+      unitsCount: data.unitsCount || 8,
+      hasBlocks: data.hasBlocks || false,
+      status: "active",
+      managerName: currentUser?.name || "مدیر",
+      managerMobile: currentUser?.mobile || "09121112233",
+      blocks: data.blocks || []
+    };
+
+    setBuildings(prev => [...prev, newBld]);
+    setActiveBuilding(newBld);
+
+    // Initial default bank account
+    const newAccount: FinancialAccount = {
+      id: "acc-" + (accounts.length + 1),
+      buildingId: newBld.id,
+      name: "حساب جاری ساختمان",
+      accountType: "bank",
+      initialBalance: 0,
+      currentBalance: 0,
+      responsibleName: newBld.managerName,
+      isActive: true
+    };
+    setAccounts(prev => [...prev, newAccount]);
+
+    const newRole: RoleAssignment = {
       userId: currentUser?.id || "usr-new",
-      buildingId: newBuildingId,
-      buildingName: newBuilding.name,
+      buildingId: newBld.id,
+      buildingName: newBld.name,
       role: "مدیر ساختمان"
     };
-
     setUserRoles(prev => [...prev, newRole]);
     setCurrentRole(newRole);
-    setIsNewBuildingModalOpen(false);
   };
 
-  // Add single unit
-  const addUnit = (unitData: Omit<Unit, "id" | "buildingId" | "balance">) => {
+  // Add Unit
+  const addUnit = (unitData: Partial<Unit> & { ownerName?: string; ownerMobile?: string; residentName?: string; residentMobile?: string; isOwnerResident?: boolean }) => {
+    const newUnitId = "u-" + (units.length + 101);
+    const isOwnerRes = unitData.isOwnerResident !== false;
+
+    const owners = unitData.ownerName ? [{
+      id: "rel-o-" + Date.now(),
+      unitId: newUnitId,
+      userId: "usr-o-" + Date.now(),
+      userName: unitData.ownerName,
+      userMobile: unitData.ownerMobile || "",
+      relationshipType: "owner" as const,
+      ownershipPercentage: 100,
+      startDate: "۱۴۰۵/۰۱/۰۱",
+      isActive: true
+    }] : [];
+
+    const residents = isOwnerRes ? owners : (unitData.residentName ? [{
+      id: "rel-r-" + Date.now(),
+      unitId: newUnitId,
+      userId: "usr-r-" + Date.now(),
+      userName: unitData.residentName,
+      userMobile: unitData.residentMobile || "",
+      relationshipType: "resident" as const,
+      startDate: "۱۴۰۵/۰۱/۰۱",
+      isActive: true
+    }] : []);
+
     const newUnit: Unit = {
-      ...unitData,
-      id: "u-" + Math.floor(100 + Math.random() * 900),
+      id: newUnitId,
       buildingId: activeBuilding.id,
-      balance: 0
+      blockId: unitData.blockId,
+      blockName: unitData.blockName,
+      name: unitData.name || "واحد " + (units.length + 1),
+      floorNumber: unitData.floorNumber || 1,
+      area: unitData.area || 100,
+      usageType: unitData.usageType || "مسکونی",
+      peopleCount: unitData.peopleCount || 2,
+      parkingCount: unitData.parkingCount || 1,
+      storeCount: unitData.storeCount || 1,
+      residentialStatus: unitData.residentialStatus || (isOwnerRes ? "مالک نشین" : "مستاجر نشین"),
+      defaultChargeAmount: unitData.defaultChargeAmount || 500000,
+      initialBalance: unitData.initialBalance || 0,
+      currentBalance: unitData.initialBalance || 0,
+      owners,
+      residents
     };
+
     setUnits(prev => [...prev, newUnit]);
 
-    // اگر ساکن یا مالک کاربر جدید است، در نقش‌ها اضافه شود
-    if (unitData.residentMobile) {
-      const residentRole: UserRoleAssignment = {
-        userId: "usr-" + unitData.residentMobile.slice(-4),
-        buildingId: activeBuilding.id,
-        buildingName: activeBuilding.name,
-        role: unitData.residentType === "مالک و ساکن" ? "مالک و ساکن" : "مستاجر",
-        unitTitle: unitData.title,
-        unitId: newUnit.id
-      };
-      setUserRoles(prev => [...prev, residentRole]);
+    // Initial Ledger if there is an opening balance
+    if (unitData.initialBalance && unitData.initialBalance !== 0) {
+      const isDebt = unitData.initialBalance < 0;
+      setLedgerEntries(prev => [
+        {
+          id: "led-" + Date.now(),
+          buildingId: activeBuilding.id,
+          unitId: newUnitId,
+          unitTitle: newUnit.name,
+          entryDate: "امروز",
+          entryType: "init",
+          title: "ثبت مانده اولیه واحد در سامانه",
+          debitAmount: isDebt ? Math.abs(unitData.initialBalance!) : 0,
+          creditAmount: !isDebt ? unitData.initialBalance! : 0,
+          balanceAfter: unitData.initialBalance!
+        },
+        ...prev
+      ]);
     }
   };
 
-  // Import units from Excel
-  const importUnitsFromExcel = (newUnitsData: Omit<Unit, "id" | "buildingId" | "balance">[]) => {
-    const createdUnits: Unit[] = newUnitsData.map((data, idx) => ({
-      ...data,
-      id: "u-" + (100 + units.length + idx + 1),
-      buildingId: activeBuilding.id,
-      balance: 0
-    }));
-
-    setUnits(prev => [...prev, ...createdUnits]);
+  const importUnitsExcel = (items: any[]) => {
+    items.forEach((item, idx) => {
+      addUnit({
+        name: item.title,
+        blockName: item.blockName,
+        area: item.area,
+        floorNumber: item.floor,
+        peopleCount: item.occupants,
+        defaultChargeAmount: item.defaultCharge,
+        ownerName: item.ownerName,
+        ownerMobile: item.ownerMobile,
+        residentName: item.residentName,
+        residentMobile: item.residentMobile,
+        isOwnerResident: item.residentType === "مالک و ساکن"
+      });
+    });
   };
 
-  // Create Charge Invoice with Calculation Engine
-  const createChargeInvoice = (data: Omit<ChargeInvoice, "id" | "buildingId" | "items" | "totalAmount"> & { customAmounts?: Record<string, number> }) => {
-    // انتخاب واحدهای مشمول
-    let targetList = units.filter(u => u.buildingId === activeBuilding.id);
-    if (data.targetUnits === "occupied") {
-      targetList = targetList.filter(u => u.isOccupied);
-    } else if (data.targetUnits === "empty") {
-      targetList = targetList.filter(u => !u.isOccupied);
+  // Create Charge
+  const createCharge = (data: Omit<Charge, "id" | "buildingId" | "totalAmount" | "totalCollected" | "items">) => {
+    let targetUnitsList = units.filter(u => u.buildingId === activeBuilding.id);
+    if (currentRole.role === "مدیر بلوک" && currentRole.blockId) {
+      targetUnitsList = targetUnitsList.filter(u => u.blockId === currentRole.blockId);
+    }
+    if (data.targetUnitsScope === "occupied") {
+      targetUnitsList = targetUnitsList.filter(u => u.residentialStatus !== "خالی");
+    } else if (data.targetUnitsScope === "empty") {
+      targetUnitsList = targetUnitsList.filter(u => u.residentialStatus === "خالی");
     }
 
     let calculatedTotal = 0;
-    const items = targetList.map(unit => {
+    const newItems: ChargeItem[] = targetUnitsList.map(unit => {
       let amount = 0;
-      const base = data.baseAmount || 0;
       const area = unit.area;
-      const occupants = unit.occupants || 1;
-      const areaRate = data.areaRate || 2500; // تومان به ازای هر متر
-      const occupantRate = data.occupantRate || 50000; // تومان به ازای هر نفر
-      const defaultCharge = unit.defaultCharge || 300000;
+      const occupants = unit.peopleCount || 1;
+      const defaultCharge = unit.defaultChargeAmount || 400000;
 
-      switch (data.calculationModel) {
-        case "FIXED_ALL":
-          amount = base;
+      switch (data.calculationMethod) {
+        case "equal":
+          amount = 500000;
           break;
-        case "DEFAULT_CHARGE":
+        case "fixed":
+          amount = 600000;
+          break;
+        case "area":
+          amount = area * 5000;
+          break;
+        case "resident":
+          amount = occupants * 150000;
+          break;
+        case "area_resident":
+          // ترکیبی با وزن‌دهی
+          amount = (area * 3000) + (occupants * 100000);
+          break;
+        case "default_charge":
           amount = defaultCharge;
-          break;
-        case "BY_AREA":
-          amount = area * areaRate;
-          break;
-        case "BY_OCCUPANTS":
-          amount = occupants * occupantRate;
-          break;
-        case "FIXED_AREA":
-          amount = base + (area * areaRate);
-          break;
-        case "FIXED_OCCUPANTS":
-          amount = base + (occupants * occupantRate);
-          break;
-        case "FIXED_AREA_OCCUPANTS":
-          amount = base + (area * areaRate) + (occupants * occupantRate);
-          break;
-        case "DEFAULT_AREA":
-          amount = defaultCharge + (area * areaRate);
-          break;
-        case "DEFAULT_OCCUPANTS":
-          amount = defaultCharge + (occupants * occupantRate);
-          break;
-        case "DEFAULT_AREA_OCCUPANTS":
-          amount = defaultCharge + (area * areaRate) + (occupants * occupantRate);
           break;
         default:
           amount = defaultCharge;
       }
 
-      if (data.customAmounts && data.customAmounts[unit.id]) {
-        amount = data.customAmounts[unit.id];
-      }
-
       calculatedTotal += amount;
+      const payer = unit.residents[0] || unit.owners[0];
 
       return {
+        id: "ci-" + Math.floor(Math.random() * 100000),
+        chargeId: "",
         unitId: unit.id,
-        unitTitle: unit.title,
-        residentName: unit.residentName || unit.ownerName,
+        unitTitle: unit.name,
+        payerName: payer ? payer.userName : "نامشخص",
+        payerMobile: payer ? payer.userMobile : "",
+        payerType: data.payerTarget === "owners" ? "owner" : "resident",
         amount,
-        penalty: 0,
-        isPaid: false
+        fineAmount: 0,
+        paidAmount: 0,
+        settlementStatus: "unpaid"
       };
     });
 
-    const newInvoice: ChargeInvoice = {
+    const newChargeId = "chg-" + Date.now();
+    const finalItems = newItems.map(item => ({ ...item, chargeId: newChargeId }));
+
+    const newCharge: Charge = {
       ...data,
-      id: "inv-" + Math.floor(100 + Math.random() * 900),
+      id: newChargeId,
       buildingId: activeBuilding.id,
       totalAmount: calculatedTotal,
-      items
+      totalCollected: 0,
+      items: finalItems
     };
 
-    setInvoices(prev => [newInvoice, ...prev]);
+    setCharges(prev => [newCharge, ...prev]);
 
-    // به‌روزرسانی بدهکاری واحدها
-    setUnits(prev =>
-      prev.map(u => {
-        const item = items.find(i => i.unitId === u.id);
-        if (item) {
-          return { ...u, balance: u.balance - item.amount };
-        }
-        return u;
-      })
-    );
+    // Update Unit Ledgers & Balances (Rule: Charge generates debit for the unit)
+    finalItems.forEach(item => {
+      setUnits(prev => prev.map(u => u.id === item.unitId ? { ...u, currentBalance: u.currentBalance - item.amount } : u));
+      setLedgerEntries(prev => [
+        {
+          id: "led-" + Math.floor(Math.random() * 100000),
+          buildingId: activeBuilding.id,
+          unitId: item.unitId,
+          unitTitle: item.unitTitle,
+          entryDate: "امروز",
+          entryType: "Charge",
+          title: `قبض شارژ: ${data.title}`,
+          debitAmount: item.amount,
+          creditAmount: 0,
+          balanceAfter: (units.find(u => u.id === item.unitId)?.currentBalance || 0) - item.amount,
+          referenceId: newChargeId
+        },
+        ...prev
+      ]);
+    });
+
+    sendBaleNotification("اهالی ساختمان", `قبض شارژ جدید با عنوان «${data.title}» برای ${finalItems.length} واحد صادر شد.`);
   };
 
-  // Pay Invoice Item
-  const payInvoiceItem = (invoiceId: string, unitId: string) => {
-    let paidAmount = 0;
-    setInvoices(prev =>
-      prev.map(inv => {
-        if (inv.id !== invoiceId) return inv;
-        return {
-          ...inv,
-          items: inv.items.map(item => {
-            if (item.unitId === unitId && !item.isPaid) {
-              paidAmount = item.amount + item.penalty;
-              return {
-                ...item,
-                isPaid: true,
-                paidAt: "امروز"
-              };
-            }
-            return item;
-          })
-        };
-      })
-    );
+  // Create Expense (supporting 3 Scenarios)
+  const createExpense = (expenseData: Omit<Expense, "id" | "buildingId" | "items" | "meterReadings"> & { meterReadings?: any[] }) => {
+    const newExpenseId = "exp-" + Date.now();
+    const activeUnits = units.filter(u => u.buildingId === activeBuilding.id);
 
-    // تسویه و افزایش موجودی صندوق
-    if (paidAmount > 0) {
-      setBuildings(prev =>
-        prev.map(b => (b.id === activeBuilding.id ? { ...b, fundBalance: b.fundBalance + paidAmount } : b))
-      );
-      setUnits(prev =>
-        prev.map(u => (u.id === unitId ? { ...u, balance: u.balance + paidAmount } : u))
-      );
-    }
-  };
+    // Items calculation if split
+    const items = expenseData.scenario !== "SCENARIO_3_FUND_PAY_NO_SPLIT" ? activeUnits.map(u => ({
+      id: "ei-" + Math.floor(Math.random() * 100000),
+      expenseId: newExpenseId,
+      unitId: u.id,
+      unitTitle: u.name,
+      payerName: u.residents[0]?.userName || u.owners[0]?.userName || "اهالی",
+      amount: Math.round(expenseData.totalAmount / (activeUnits.length || 1)),
+      status: "unpaid" as const
+    })) : [];
 
-  // Add Expense
-  const addExpense = (expenseData: Omit<ExpenseItem, "id" | "buildingId">) => {
-    const newExpense: ExpenseItem = {
+    const newExpense: Expense = {
       ...expenseData,
-      id: "exp-" + Math.floor(100 + Math.random() * 900),
-      buildingId: activeBuilding.id
+      id: newExpenseId,
+      buildingId: activeBuilding.id,
+      items,
+      meterReadings: expenseData.meterReadings || []
     };
 
     setExpenses(prev => [newExpense, ...prev]);
 
-    // کسر از موجودی صندوق ساختمان
-    setBuildings(prev =>
-      prev.map(b => (b.id === activeBuilding.id ? { ...b, fundBalance: b.fundBalance - expenseData.totalAmount } : b))
-    );
+    // If Scenario 1 (Paid first from fund) or Scenario 3 (Paid directly without splitting)
+    if (expenseData.paidFromAccountId) {
+      payExpenseFromFund(newExpenseId, expenseData.paidFromAccountId);
+    }
 
-    // اگر "اعلام به اهالی ساختمان" باشد، واحدها بدهکار می‌شوند
-    if (expenseData.settlementMethod === "اعلام به اهالی ساختمان") {
-      const activeUnits = units.filter(u => u.buildingId === activeBuilding.id);
-      const splitPerUnit = Math.round(expenseData.totalAmount / (activeUnits.length || 1));
-
-      setUnits(prev =>
-        prev.map(u => {
-          if (u.buildingId === activeBuilding.id) {
-            return { ...u, balance: u.balance - splitPerUnit };
-          }
-          return u;
-        })
-      );
+    // If Scenario 1 or 2 (Splitting cost to units)
+    if (expenseData.scenario !== "SCENARIO_3_FUND_PAY_NO_SPLIT") {
+      items.forEach(item => {
+        setUnits(prev => prev.map(u => u.id === item.unitId ? { ...u, currentBalance: u.currentBalance - item.amount } : u));
+        setLedgerEntries(prev => [
+          {
+            id: "led-" + Math.floor(Math.random() * 100000),
+            buildingId: activeBuilding.id,
+            unitId: item.unitId,
+            unitTitle: item.unitTitle,
+            entryDate: "امروز",
+            entryType: "expense",
+            title: `سهم هزینه: ${expenseData.title}`,
+            debitAmount: item.amount,
+            creditAmount: 0,
+            balanceAfter: (units.find(u => u.id === item.unitId)?.currentBalance || 0) - item.amount,
+            referenceId: newExpenseId
+          },
+          ...prev
+        ]);
+      });
     }
   };
 
-  // Add Other Revenue
-  const addOtherRevenue = (revData: Omit<OtherRevenue, "id" | "buildingId">) => {
-    const newRev: OtherRevenue = {
-      ...revData,
-      id: "rev-" + Math.floor(100 + Math.random() * 900),
+  const payExpenseFromFund = (expenseId: string, accountId: string) => {
+    const exp = expenses.find(e => e.id === expenseId);
+    if (!exp) return;
+
+    // Deduct from Financial Account
+    setAccounts(prev => prev.map(acc => acc.id === accountId ? { ...acc, currentBalance: acc.currentBalance - exp.totalAmount } : acc));
+    setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, payStatus: "paid", paidFromAccountId: accountId } : e));
+
+    // Record Real Transaction
+    const account = accounts.find(a => a.id === accountId);
+    const newTx: Transaction = {
+      id: "tx-" + Date.now(),
+      buildingId: activeBuilding.id,
+      financialAccountId: accountId,
+      accountName: account?.name || "حساب ساختمان",
+      type: "payment",
+      category: "پرداخت هزینه",
+      amount: exp.totalAmount,
+      transactionDate: "امروز",
+      description: `پرداخت هزینه ${exp.title}`,
+      payerOrPayeeName: "پیمانکار / شرکت خدمات",
+      status: "confirmed",
+      allocations: []
+    };
+    setTransactions(prev => [newTx, ...prev]);
+  };
+
+  // Add Income
+  const addIncome = (incomeData: Omit<Income, "id" | "buildingId">) => {
+    const newInc: Income = {
+      ...incomeData,
+      id: "inc-" + Date.now(),
       buildingId: activeBuilding.id
     };
-    setOtherRevenues(prev => [newRev, ...prev]);
+    setIncomes(prev => [newInc, ...prev]);
+  };
 
-    // واریز به صندوق
-    setBuildings(prev =>
-      prev.map(b => (b.id === activeBuilding.id ? { ...b, fundBalance: b.fundBalance + revData.amount } : b))
-    );
+  // Real Transactions (Receipt / Payment / Transfer)
+  const addTransaction = (txData: Omit<Transaction, "id" | "buildingId">) => {
+    const newTxId = "tx-" + Date.now();
+    const newTx: Transaction = {
+      ...txData,
+      id: newTxId,
+      buildingId: activeBuilding.id
+    };
+
+    setTransactions(prev => [newTx, ...prev]);
+
+    // If confirmed, update account balance
+    if (newTx.status === "confirmed") {
+      applyTransactionToBalance(newTx);
+    }
+  };
+
+  const applyTransactionToBalance = (tx: Transaction) => {
+    setAccounts(prev => prev.map(acc => {
+      if (acc.id !== tx.financialAccountId) return acc;
+      if (tx.type === "receipt") return { ...acc, currentBalance: acc.currentBalance + tx.amount };
+      if (tx.type === "payment") return { ...acc, currentBalance: acc.currentBalance - tx.amount };
+      return acc;
+    }));
+
+    // If allocation to charge item
+    tx.allocations.forEach(alloc => {
+      if (alloc.allocatableType === "charge_item") {
+        setCharges(prev => prev.map(chg => ({
+          ...chg,
+          totalCollected: chg.totalCollected + alloc.amount,
+          items: chg.items.map(it => it.id === alloc.allocatableId ? {
+            ...it,
+            paidAmount: it.paidAmount + alloc.amount,
+            settlementStatus: it.paidAmount + alloc.amount >= it.amount ? "paid" : "partially_paid"
+          } : it)
+        })));
+
+        // Update Unit Balance & Ledger
+        const targetUnit = units.find(u => u.name === alloc.unitTitle);
+        if (targetUnit) {
+          setUnits(prev => prev.map(u => u.id === targetUnit.id ? { ...u, currentBalance: u.currentBalance + alloc.amount } : u));
+          setLedgerEntries(prev => [
+            {
+              id: "led-" + Math.floor(Math.random() * 100000),
+              buildingId: activeBuilding.id,
+              unitId: targetUnit.id,
+              unitTitle: targetUnit.name,
+              entryDate: "امروز",
+              entryType: "payment",
+              title: `واریز و تسویه: ${alloc.allocatableTitle}`,
+              debitAmount: 0,
+              creditAmount: alloc.amount,
+              balanceAfter: targetUnit.currentBalance + alloc.amount,
+              referenceId: tx.id
+            },
+            ...prev
+          ]);
+        }
+      }
+    });
+  };
+
+  const approvePendingTransaction = (txId: string) => {
+    const tx = transactions.find(t => t.id === txId);
+    if (!tx || tx.status === "confirmed") return;
+
+    const updated = { ...tx, status: "confirmed" as const };
+    setTransactions(prev => prev.map(t => t.id === txId ? updated : t));
+    applyTransactionToBalance(updated);
+    sendBaleNotification(tx.payerOrPayeeName, `تراکنش واریز مبلغ ${new Intl.NumberFormat("fa-IR").format(tx.amount)} تومان توسط مدیر تایید گردید.`);
   };
 
   return (
@@ -394,29 +577,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         userRoles,
         currentRole,
         isLoginModalOpen,
-        isNewBuildingModalOpen,
         setIsLoginModalOpen,
+        isNewBuildingModalOpen,
         setIsNewBuildingModalOpen,
+        switchRole,
         loginWithOtp,
         loginWithPassword,
-        switchRole,
         logout,
         buildings,
         activeBuilding,
         setActiveBuilding,
         createBuilding,
+        createBlock,
         units,
         addUnit,
-        importUnitsFromExcel,
-        invoices,
-        createChargeInvoice,
-        payInvoiceItem,
+        importUnitsExcel,
+        charges,
+        createCharge,
         expenses,
-        addExpense,
-        otherRevenues,
-        addOtherRevenue,
+        createExpense,
+        payExpenseFromFund,
+        incomes,
+        addIncome,
+        accounts,
+        transactions,
+        addTransaction,
+        approvePendingTransaction,
+        ledgerEntries,
         activeTab,
-        setActiveTab
+        setActiveTab,
+        baleNotifications,
+        sendBaleNotification
       }}
     >
       {children}
@@ -426,8 +617,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error("useApp must be used within an AppProvider");
-  }
+  if (!context) throw new Error("useApp must be used within AppProvider");
   return context;
 };

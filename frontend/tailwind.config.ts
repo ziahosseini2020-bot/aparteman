@@ -12,29 +12,39 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        primary: {
-          DEFAULT: "#2563eb",
-          foreground: "#ffffff",
-          50: "#eff6ff",
-          100: "#dbeafe",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
+        saraban: {
+          50: "#f0fdf4",
+          100: "#dcfce7",
+          500: "#22c55e",
+          600: "#16a34a",
+          700: "#15803d",
+          800: "#166534",
+          900: "#14532d",
         },
-        emerald: {
-          500: "#10b981",
-          600: "#059669",
-        },
-        amber: {
-          500: "#f59e0b",
-          600: "#d97706",
-        }
       },
       fontFamily: {
         sans: ["var(--font-vazirmatn)", "Tahoma", "sans-serif"],
       },
     },
   },
-  plugins: [],
+  plugins: [require("daisyui")],
+  daisyui: {
+    themes: [
+      {
+        sarabanTheme: {
+          "primary": "#0284c7",
+          "secondary": "#0d9488",
+          "accent": "#f59e0b",
+          "neutral": "#1e293b",
+          "base-100": "#ffffff",
+          "info": "#38bdf8",
+          "success": "#10b981",
+          "warning": "#f59e0b",
+          "error": "#ef4444",
+        },
+      },
+      "light",
+    ],
+  },
 };
 export default config;

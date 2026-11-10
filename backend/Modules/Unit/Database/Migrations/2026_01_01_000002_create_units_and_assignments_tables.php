@@ -20,6 +20,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('storage_count')->default(0);
             $table->boolean('is_occupied')->default(true);
             $table->decimal('default_charge_amount', 12, 2)->default(0);
+            $table->decimal('opening_balance', 12, 2)->default(0);
             $table->timestamps();
         });
 
@@ -28,6 +29,7 @@ return new class extends Migration
             $table->foreignId('unit_id')->constrained('units')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->enum('type', ['owner', 'tenant'])->default('owner');
+            $table->decimal('ownership_percentage', 5, 2)->default(100.00);
             $table->boolean('is_resident')->default(true);
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
